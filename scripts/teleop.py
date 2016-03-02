@@ -61,20 +61,7 @@ class Teleop:
             solver_R.solve(trans_pointR)
             solver_L.solve(trans_pointL)
 
-            # if solver_R.solution_found:
-                # (transR_last, rotR_last) = self.tflistener.lookupTransform('/torso_' + str(user),
-                #     '/right_hand_' + str(user), rospy.Time.now())
-                # if (abs(transR_last[0]-transR[0])>0.05 or 
-                #     abs(transR_last[1]-transR[1])>0.05 or 
-                #     abs(transR_last[2]-transR[2])>0.05):
-            # self.mover_right.move()
-
-            # if solver_L.solution_found:
-                # (transL_last, rotL_last) = self.tflistener.lookupTransform('/torso_' + str(user),
-                #     '/left_hand_' + str(user), self.mover_left.solver.last_solution_time)
-                # if (abs(transL_last[0]-transL[0])>0.05 or 
-                #     abs(transL_last[1]-transL[1])>0.05 or 
-                #     abs(transL_last[2]-transL[2])>0.05):
+            # self.mover_right.interface.set_joint_positions(self.mover_right.solver.solution)
             # self.mover_left.move()
 
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
@@ -86,7 +73,8 @@ class Teleop:
 
 def cb_control(event):
     Kp = 1
-    capMaxSpeed = 0.5
+    capMaxSpeed = 0.5   #fraction of max speed limit allowed
+    deadband = 0.3      #radians
     control_cmdL = dict()
     control_cmdR = dict()
 
@@ -101,29 +89,32 @@ def cb_control(event):
 
     for key, val in des_angsL.iteritems():
         eL = val - cur_angsL[key]
-        if abs(Kp*eL) < max_velsL[key]*capMaxSpeed:
-            control_cmdL[key] = Kp*eL
-        else:
-            if eL<0:
-                control_cmdL[key] = -max_velsL[key]*capMaxSpeed
+        if abs(eL)>deadband:
+            if abs(Kp*eL) < max_velsL[key]*capMaxSpeed:
+                control_cmdL[key] = Kp*eL
             else:
-                control_cmdL[key] = max_velsL[key]*capMaxSpeed
+                if eL<0:
+                    control_cmdL[key] = -max_velsL[key]*capMaxSpeed
+                else:
+                    control_cmdL[key] = max_velsL[key]*capMaxSpeed
+        else:
+            control_cmdL[key] = 0
 
     for key, val in des_angsR.iteritems():
         eR = val - cur_angsR[key]
-        if not abs(eR) < abs(ang_limsR[key][0])+abs(ang_limsR[key][1]):
-            
-
-        if abs(Kp*eR) < max_velsR[key]*capMaxSpeed:
-            control_cmdR[key] = Kp*eR
-        else:
-            if eR<0:
-                control_cmdR[key] = -max_velsR[key]*capMaxSpeed
+        if abs(eR)>deadband:
+            if abs(Kp*eR) < max_velsR[key]*capMaxSpeed:
+                control_cmdR[key] = Kp*eR
             else:
-                control_cmdR[key] = max_velsR[key]*capMaxSpeed
+                if eR<0:
+                    control_cmdR[key] = -max_velsR[key]*capMaxSpeed
+                else:
+                    control_cmdR[key] = max_velsR[key]*capMaxSpeed
+        else:
+            control_cmdL[key] = 0
 
     teleop_obj.mover_left.move(control_cmdL)
-    teleop_obj.mover_right.move(control_cmdR)
+    # teleop_obj.mover_right.move(control_cmdR)
         
 
 def joint_lims(limb):

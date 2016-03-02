@@ -23,7 +23,7 @@ class IKsolver:
         rospy.wait_for_service(ns)
         self.iksvc = rospy.ServiceProxy(ns, SolvePositionIK)
         self.solution = dict()
-        self.solution_found = False
+        # self.solution_found = False
         # self.last_solution_time = rospy.Time.now()
         # self.ptarget = ptarget  #Point(x=?, y=?, z=?)
         self.qtarget = [
@@ -43,7 +43,7 @@ class IKsolver:
         ]
 
     def solve(self,ptarget):    #ptarget should be a Point()
-        self.solution_found = False
+        # self.solution_found = False
         ikreq = SolvePositionIKRequest() #service request object
         hdr = Header(
             stamp=rospy.Time.now(), frame_id='base')
@@ -76,7 +76,7 @@ class IKsolver:
         if resp.isValid[0]==True:
             self.solution = dict(zip(resp.joints[0].name,
                 resp.joints[0].position))
-            self.solution_found = True
+            # self.solution_found = True
             # self.last_solution_time = rospy.Time.now()
             rospy.loginfo("EXACT solution Found, %s" % self.limb, self.solution)
             return True
@@ -109,7 +109,7 @@ class IKsolver:
                         if resp.isValid[i]==True:
                             self.solution = dict(zip(resp.joints[i].name,
                                 resp.joints[i].position))
-                            self.solution_found = True
+                            # self.solution_found = True
                             # self.last_solution_time = rospy.Time.now()
                             rospy.loginfo("EXACT solution Found, %s" % self.limb, self.solution)
                             return True
