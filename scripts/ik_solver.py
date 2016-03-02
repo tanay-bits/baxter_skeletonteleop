@@ -111,7 +111,7 @@ class IKsolver:
                                 resp.joints[i].position))
                             self.solution_found = True
                             # self.last_solution_time = rospy.Time.now()
-                            rospy.loginfo("SOFT solution Found, %s" % self.limb, self.solution)
+                            rospy.loginfo("EXACT solution Found, %s" % self.limb, self.solution)
                             return True
                 else:
                     rospy.logwarn("INVALID POSE for %s" % self.limb)

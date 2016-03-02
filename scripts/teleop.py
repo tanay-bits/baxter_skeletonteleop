@@ -67,7 +67,7 @@ class Teleop:
                 # if (abs(transR_last[0]-transR[0])>0.05 or 
                 #     abs(transR_last[1]-transR[1])>0.05 or 
                 #     abs(transR_last[2]-transR[2])>0.05):
-            self.mover_right.move()
+            # self.mover_right.move()
 
             # if solver_L.solution_found:
                 # (transL_last, rotL_last) = self.tflistener.lookupTransform('/torso_' + str(user),
@@ -75,12 +75,83 @@ class Teleop:
                 # if (abs(transL_last[0]-transL[0])>0.05 or 
                 #     abs(transL_last[1]-transL[1])>0.05 or 
                 #     abs(transL_last[2]-transL[2])>0.05):
-            self.mover_left.move()
+            # self.mover_left.move()
 
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
             pass
 
+# class Controller:
+#     def __init__(self, teleop_obj):
+
+
+def cb_control(event):
+    Kp = 1
+    capMaxSpeed = 0.5
+    control_cmdL = dict()
+    control_cmdR = dict()
+
+    cur_angsL = teleop_obj.mover_left.interface.joint_angles()
+    cur_angsR = teleop_obj.mover_right.interface.joint_angles()
+    des_angsL = teleop_obj.mover_left.solver.solution
+    des_angsR = teleop_obj.mover_right.solver.solution
+
+    # cur_velsL = teleop_obj.mover_left.interface.joint_velocities()
+    # cur_velsR = teleop_obj.mover_right.interface.joint_velocities()
+    # des_velsL = 
+
+    for key, val in des_angsL.iteritems():
+        eL = val - cur_angsL[key]
+        if abs(Kp*eL) < max_velsL[key]*capMaxSpeed:
+            control_cmdL[key] = Kp*eL
+        else:
+            if eL<0:
+                control_cmdL[key] = -max_velsL[key]*capMaxSpeed
+            else:
+                control_cmdL[key] = max_velsL[key]*capMaxSpeed
+
+    for key, val in des_angsR.iteritems():
+        eR = val - cur_angsR[key]
+        if not abs(eR) < abs(ang_limsR[key][0])+abs(ang_limsR[key][1]):
+            
+
+        if abs(Kp*eR) < max_velsR[key]*capMaxSpeed:
+            control_cmdR[key] = Kp*eR
+        else:
+            if eR<0:
+                control_cmdR[key] = -max_velsR[key]*capMaxSpeed
+            else:
+                control_cmdR[key] = max_velsR[key]*capMaxSpeed
+
+    teleop_obj.mover_left.move(control_cmdL)
+    teleop_obj.mover_right.move(control_cmdR)
+        
+
+def joint_lims(limb):
+    ang_lims = dict([(limb+'_s0',(-1.7, 1.7)),
+        (limb+'_s1',(-2.14, 1.04)),
+        (limb+'_e0',(-3.05, 3.05)),
+        (limb+'_e1',(-0.05, 2.61)),
+        (limb+'_w0',(-3.05, 3.05)),
+        (limb+'_w1',(-1.57, 2.09)),
+        (limb+'_w2',(-3.05, 3.05))])
+    max_vels = dict([(limb+'_s0',2),
+        (limb+'_s1',2),
+        (limb+'_e0',2),
+        (limb+'_e1',2),
+        (limb+'_w0',4),
+        (limb+'_w1',4),
+        (limb+'_w2',4)])
+    return ang_lims, max_vels
+
 
 if __name__ == '__main__':
-    Teleop()
+    CONTROL_FREQ = 100   #Hz
+    teleop_obj = Teleop()
+    ang_limsL, max_velsL = joint_lims('left')
+    ang_limsR, max_velsR = joint_lims('right')
+   
+    while teleop_obj.rs.state().enabled and not rospy.is_shutdown():
+        dt = rospy.Duration(1./CONTROL_FREQ)
+        rospy.Timer(dt, cb_control)    
+    
     rospy.spin()
