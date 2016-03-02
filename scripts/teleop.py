@@ -17,7 +17,8 @@ class Teleop:
 
         self.mover_left = LimbMover("left")
         self.mover_right = LimbMover("right")
-        # self.user = 1;
+        
+        self.start_flag = False
         # subscribe to /skeletons topic and perform callback
         rospy.Subscriber("/skeletons", Skeletons, self.callback)
 
@@ -43,33 +44,37 @@ class Teleop:
             user_YL = transL[1]
             user_ZL = transL[2]
 
-            trans_pointR.x = user_ZR*3
-            trans_pointR.y = user_XR*1.5
-            trans_pointR.z = -user_YR*2
+            if not self.start_flag:
+                pmins, pmaxs = start_box(0.10, -0.05, 0.3, 0.60)
+                # if (pmins[0]<user_XL<pmaxs[0] and pmins[1]<user_YL<pmaxs[1] and pmins[2]<user_ZL<pmaxs[2]):
+                if (pmins[0]<user_XL<pmaxs[0] and pmins[1]<user_YL<pmaxs[1] and pmins[2]<user_ZL<pmaxs[2] and 
+                    pmins[0]<user_XR<pmaxs[0] and pmins[1]<user_YR<pmaxs[1] and pmins[2]<user_ZR<pmaxs[2]):
+                    self.start_flag = True
 
-            trans_pointL.x = user_ZL*3
-            trans_pointL.y = user_XL*1.5
-            trans_pointL.z = -user_YL*2
+            else:
+                trans_pointR.x = user_ZR*3
+                trans_pointR.y = user_XR*1.5
+                trans_pointR.z = -user_YR*2
 
-            # trans_point.x = 1.0992
-            # trans_point.y = -0.4256
-            # trans_point.z = 0.6644
+                trans_pointL.x = user_ZL*3
+                trans_pointL.y = user_XL*1.5
+                trans_pointL.z = -user_YL*2
 
-            solver_R = self.mover_right.solver
-            solver_L = self.mover_left.solver
-            
-            solver_R.solve(trans_pointR)
-            solver_L.solve(trans_pointL)
+                # trans_point.x = 1.0992
+                # trans_point.y = -0.4256
+                # trans_point.z = 0.6644
 
-            # self.mover_right.interface.set_joint_positions(self.mover_right.solver.solution)
-            # self.mover_left.move()
+                solver_R = self.mover_right.solver
+                solver_L = self.mover_left.solver
+                
+                solver_R.solve(trans_pointR)
+                solver_L.solve(trans_pointL)
+
+                # self.mover_right.interface.set_joint_positions(self.mover_right.solver.solution)
+                # self.mover_left.move()
 
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
             pass
-
-# class Controller:
-#     def __init__(self, teleop_obj):
-
 
 def cb_control(event):
     Kp = 1
@@ -78,44 +83,53 @@ def cb_control(event):
     control_cmdL = dict()
     control_cmdR = dict()
 
-    cur_angsL = teleop_obj.mover_left.interface.joint_angles()
-    cur_angsR = teleop_obj.mover_right.interface.joint_angles()
-    des_angsL = teleop_obj.mover_left.solver.solution
-    des_angsR = teleop_obj.mover_right.solver.solution
+    if teleop_obj.start_flag:
+        cur_angsL = teleop_obj.mover_left.interface.joint_angles()
+        cur_angsR = teleop_obj.mover_right.interface.joint_angles()
+        des_angsL = teleop_obj.mover_left.solver.solution
+        des_angsR = teleop_obj.mover_right.solver.solution
 
-    # cur_velsL = teleop_obj.mover_left.interface.joint_velocities()
-    # cur_velsR = teleop_obj.mover_right.interface.joint_velocities()
-    # des_velsL = 
-
-    for key, val in des_angsL.iteritems():
-        eL = val - cur_angsL[key]
-        if abs(eL)>deadband:
-            if abs(Kp*eL) < max_velsL[key]*capMaxSpeed:
-                control_cmdL[key] = Kp*eL
-            else:
-                if eL<0:
-                    control_cmdL[key] = -max_velsL[key]*capMaxSpeed
+        for key, val in des_angsL.iteritems():
+            eL = val - cur_angsL[key]
+            if abs(eL)>deadband:
+                if abs(Kp*eL) < max_velsL[key]*capMaxSpeed:
+                    control_cmdL[key] = Kp*eL
                 else:
-                    control_cmdL[key] = max_velsL[key]*capMaxSpeed
-        else:
-            control_cmdL[key] = 0
-
-    for key, val in des_angsR.iteritems():
-        eR = val - cur_angsR[key]
-        if abs(eR)>deadband:
-            if abs(Kp*eR) < max_velsR[key]*capMaxSpeed:
-                control_cmdR[key] = Kp*eR
+                    if eL<0:
+                        control_cmdL[key] = -max_velsL[key]*capMaxSpeed
+                    else:
+                        control_cmdL[key] = max_velsL[key]*capMaxSpeed
             else:
-                if eR<0:
-                    control_cmdR[key] = -max_velsR[key]*capMaxSpeed
-                else:
-                    control_cmdR[key] = max_velsR[key]*capMaxSpeed
-        else:
-            control_cmdL[key] = 0
+                control_cmdL[key] = 0
 
-    teleop_obj.mover_left.move(control_cmdL)
-    # teleop_obj.mover_right.move(control_cmdR)
-        
+        for key, val in des_angsR.iteritems():
+            eR = val - cur_angsR[key]
+            if abs(eR)>deadband:
+                if abs(Kp*eR) < max_velsR[key]*capMaxSpeed:
+                    control_cmdR[key] = Kp*eR
+                else:
+                    if eR<0:
+                        control_cmdR[key] = -max_velsR[key]*capMaxSpeed
+                    else:
+                        control_cmdR[key] = max_velsR[key]*capMaxSpeed
+            else:
+                control_cmdL[key] = 0
+
+        teleop_obj.mover_left.move(control_cmdL)
+        # teleop_obj.mover_right.move(control_cmdR)     
+
+def start_box(xcenter, ycenter, zcenter, boxlength):
+    to_add = boxlength/2.
+    xmin = xcenter - to_add
+    xmax = xcenter + to_add
+    ymin = ycenter - to_add
+    ymax = ycenter + to_add
+    zmin = zcenter - to_add
+    zmax = zcenter + to_add
+
+    pmins = [xmin, ymin, zmin]
+    pmaxs = [xmax, ymax, zmax]
+    return pmins, pmaxs
 
 def joint_lims(limb):
     ang_lims = dict([(limb+'_s0',(-1.7, 1.7)),
