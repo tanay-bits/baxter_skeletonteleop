@@ -20,7 +20,7 @@ class Teleop:
         
         self.start_flag = False
         # subscribe to /skeletons topic and perform callback
-        rospy.Subscriber("/skeletons", Skeletons, self.callback)
+        rospy.Subscriber("/skeletons", Skeletons, self.callback, queue_size=1)
 
     def callback(self, message):
         number_users = len(message.skeletons)
@@ -113,10 +113,10 @@ def cb_control(event):
                     else:
                         control_cmdR[key] = max_velsR[key]*capMaxSpeed
             else:
-                control_cmdL[key] = 0
+                control_cmdR[key] = 0
 
         teleop_obj.mover_left.move(control_cmdL)
-        # teleop_obj.mover_right.move(control_cmdR)     
+        teleop_obj.mover_right.move(control_cmdR)     
 
 def start_box(xcenter, ycenter, zcenter, boxlength):
     to_add = boxlength/2.
@@ -155,8 +155,7 @@ if __name__ == '__main__':
     ang_limsL, max_velsL = joint_lims('left')
     ang_limsR, max_velsR = joint_lims('right')
    
-    while teleop_obj.rs.state().enabled and not rospy.is_shutdown():
-        dt = rospy.Duration(1./CONTROL_FREQ)
-        rospy.Timer(dt, cb_control)    
+    dt = rospy.Duration(1./CONTROL_FREQ)
+    rospy.Timer(dt, cb_control)    
     
     rospy.spin()
