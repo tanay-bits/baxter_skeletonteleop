@@ -23,6 +23,8 @@ class IKsolver:
         rospy.wait_for_service(ns)
         self.iksvc = rospy.ServiceProxy(ns, SolvePositionIK)
         self.solution = dict()
+        self.solution_found = False
+        # self.last_solution_time = rospy.Time.now()
         # self.ptarget = ptarget  #Point(x=?, y=?, z=?)
         self.qtarget = [
             # Human-like mapping (front of camera  = front of the wrist)
@@ -41,6 +43,7 @@ class IKsolver:
         ]
 
     def solve(self,ptarget):    #ptarget should be a Point()
+        self.solution_found = False
         ikreq = SolvePositionIKRequest() #service request object
         hdr = Header(
             stamp=rospy.Time.now(), frame_id='base')
@@ -73,24 +76,26 @@ class IKsolver:
         if resp.isValid[0]==True:
             self.solution = dict(zip(resp.joints[0].name,
                 resp.joints[0].position))
-            rospy.loginfo("Solution Found, %s" % self.limb, self.solution)
+            self.solution_found = True
+            # self.last_solution_time = rospy.Time.now()
+            rospy.loginfo("EXACT solution Found, %s" % self.limb, self.solution)
             return True
       
         else:
-            num_soft_targets = 4
-            for i in xrange(num_soft_targets):
-                noise = np.random.normal(0,0.05,3)
-                ptarget_soft = Point(x=ptarget.x+noise[0],
-                    y=ptarget.y+noise[1],
-                    z=ptarget.z+noise[2])
-                pose_soft = PoseStamped(
-                    header=hdr,
-                    pose=Pose(
-                        position=ptarget_soft,
-                        orientation=self.qtarget[0]
-                    ),
-                )
-                ikreq.pose_stamp.append(pose_soft)
+            # num_soft_targets = 4
+            # for i in xrange(num_soft_targets):
+            #     noise = np.random.normal(0,0.1,3)
+            #     ptarget_soft = Point(x=ptarget.x+noise[0],
+            #         y=ptarget.y+noise[1],
+            #         z=ptarget.z+noise[2])
+            #     pose_soft = PoseStamped(
+            #         header=hdr,
+            #         pose=Pose(
+            #             position=ptarget_soft,
+            #             orientation=self.qtarget[0]
+            #         ),
+            #     )
+            #     ikreq.pose_stamp.append(pose_soft)
 
             for counter in xrange(50):
                 try:
@@ -104,7 +109,9 @@ class IKsolver:
                         if resp.isValid[i]==True:
                             self.solution = dict(zip(resp.joints[i].name,
                                 resp.joints[i].position))
-                            rospy.loginfo("Solution Found, %s" % self.limb, self.solution)
+                            self.solution_found = True
+                            # self.last_solution_time = rospy.Time.now()
+                            rospy.loginfo("SOFT solution Found, %s" % self.limb, self.solution)
                             return True
                 else:
                     rospy.logwarn("INVALID POSE for %s" % self.limb)
@@ -129,4 +136,5 @@ class IKsolver:
                         js.position.append(val+noiselist[i])
                         i += 1
 
-                    ikreq.seed_angles = [js]*(num_soft_targets+1)
+                    # ikreq.seed_angles = [js]*(num_soft_targets+1)
+                    ikreq.seed_angles = [js]

@@ -5,7 +5,7 @@ import baxter_interface
 from geometry_msgs.msg import Point
 from skeletonmsgs_nu.msg import Skeletons
 from baxter_interface import CHECK_VERSION
-from baxter_skeletonteleop.limb_mover import LimbMover
+from limb_mover import LimbMover
 
 class Teleop:
     def __init__(self):
@@ -17,7 +17,7 @@ class Teleop:
 
         self.mover_left = LimbMover("left")
         self.mover_right = LimbMover("right")
-        
+        # self.user = 1;
         # subscribe to /skeletons topic and perform callback
         rospy.Subscriber("/skeletons", Skeletons, self.callback)
 
@@ -55,9 +55,26 @@ class Teleop:
             # trans_point.y = -0.4256
             # trans_point.z = 0.6644
 
-            self.mover_right.solver.solve(trans_pointR)
-            self.mover_left.solver.solve(trans_pointL)
+            solver_R = self.mover_right.solver
+            solver_L = self.mover_left.solver
+            
+            solver_R.solve(trans_pointR)
+            solver_L.solve(trans_pointL)
+
+            # if solver_R.solution_found:
+                # (transR_last, rotR_last) = self.tflistener.lookupTransform('/torso_' + str(user),
+                #     '/right_hand_' + str(user), rospy.Time.now())
+                # if (abs(transR_last[0]-transR[0])>0.05 or 
+                #     abs(transR_last[1]-transR[1])>0.05 or 
+                #     abs(transR_last[2]-transR[2])>0.05):
             self.mover_right.move()
+
+            # if solver_L.solution_found:
+                # (transL_last, rotL_last) = self.tflistener.lookupTransform('/torso_' + str(user),
+                #     '/left_hand_' + str(user), self.mover_left.solver.last_solution_time)
+                # if (abs(transL_last[0]-transL[0])>0.05 or 
+                #     abs(transL_last[1]-transL[1])>0.05 or 
+                #     abs(transL_last[2]-transL[2])>0.05):
             self.mover_left.move()
 
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
