@@ -14,6 +14,7 @@ from limb_mover import LimbMover
 # NON-ROS IMPORTS #
 ###################
 import numpy as np
+from multiprocessing import Process
 
 ####################
 # GLOBAL VARIABLES #
@@ -67,46 +68,54 @@ class Teleop:
                 found = False
             if not found:
                 rospy.logwarn("Could not find a skeleton userid that matches the key user")
-                return
-        
+                return        
         user = skel.userid
 
         # target points for Baxter:
         trans_pointL = Point()
         trans_pointR = Point()
 
-        try:
-            (transR, rotR) = self.tflistener.lookupTransform('/torso_' + str(user),
-                '/right_hand_' + str(user), rospy.Time(0))
-            (transL, rotL) = self.tflistener.lookupTransform('/torso_' + str(user),
-                '/left_hand_' + str(user), rospy.Time(0))
-            user_XR = transR[0]
-            user_YR = transR[1]
-            user_ZR = transR[2]
-            user_XL = transL[0]
-            user_YL = transL[1]
-            user_ZL = transL[2]
+        if (self.tflistener.frameExists('/torso_'+str(user)) and 
+            self.tflistener.frameExists('/right_hand_'+str(user)) and 
+            self.tflistener.frameExists('/left_hand_'+str(user))):
+            try:
+                (transR, rotR) = self.tflistener.lookupTransform('/torso_' + str(user),
+                    '/right_hand_' + str(user), rospy.Time(0))
+                (transL, rotL) = self.tflistener.lookupTransform('/torso_' + str(user),
+                    '/left_hand_' + str(user), rospy.Time(0))
+                user_XR = transR[0]
+                user_YR = transR[1]
+                user_ZR = transR[2]
+                user_XL = transL[0]
+                user_YL = transL[1]
+                user_ZL = transL[2]
 
-            if not self.start_flag:
-                pmins, pmaxs = start_box(0.10, -0.05, 0.3, 0.80)
-                if (pmins[0]<user_XL<pmaxs[0] and pmins[1]<user_YL<pmaxs[1] and pmins[2]<user_ZL<pmaxs[2] and 
-                    pmins[0]<user_XR<pmaxs[0] and pmins[1]<user_YR<pmaxs[1] and pmins[2]<user_ZR<pmaxs[2]):
-                    self.start_flag = True
+                if not self.start_flag:
+                    pmins, pmaxs = start_box(0.10, -0.05, 0.3, 0.80)
+                    if (pmins[0]<user_XL<pmaxs[0] and pmins[1]<user_YL<pmaxs[1] and pmins[2]<user_ZL<pmaxs[2] and 
+                        pmins[0]<user_XR<pmaxs[0] and pmins[1]<user_YR<pmaxs[1] and pmins[2]<user_ZR<pmaxs[2]):
+                        self.start_flag = True
 
-            else:
-                trans_pointR.x = user_ZR*3
-                trans_pointR.y = user_XR*1.5
-                trans_pointR.z = -user_YR*2
+                else:
+                    trans_pointR.x = user_ZR*3
+                    trans_pointR.y = user_XR*1.5
+                    trans_pointR.z = -user_YR*2
 
-                trans_pointL.x = user_ZL*3
-                trans_pointL.y = user_XL*1.5
-                trans_pointL.z = -user_YL*2
-                
-                self.mover_right.solver.solve(trans_pointR)
-                self.mover_left.solver.solve(trans_pointL)
+                    trans_pointL.x = user_ZL*3
+                    trans_pointL.y = user_XL*1.5
+                    trans_pointL.z = -user_YL*2
+                    
+                    p1 = Process(target = self.mover_left.solver.solve(trans_pointL))
+                    p1.start()
+                    p2 = Process(target = self.mover_right.solver.solve(trans_pointR))
+                    p2.start()
+                    
+                    # self.mover_left.solver.solve(trans_pointL)
+                    # self.mover_right.solver.solve(trans_pointR)
 
-        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-            pass
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                pass
+        
         return
 
     def cb_control(self, event):
