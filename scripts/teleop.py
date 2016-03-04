@@ -88,7 +88,7 @@ class Teleop:
             user_ZL = transL[2]
 
             if not self.start_flag:
-                pmins, pmaxs = start_box(0.10, -0.05, 0.3, 0.60)
+                pmins, pmaxs = start_box(0.10, -0.05, 0.3, 0.80)
                 if (pmins[0]<user_XL<pmaxs[0] and pmins[1]<user_YL<pmaxs[1] and pmins[2]<user_ZL<pmaxs[2] and 
                     pmins[0]<user_XR<pmaxs[0] and pmins[1]<user_YR<pmaxs[1] and pmins[2]<user_ZR<pmaxs[2]):
                     self.start_flag = True
@@ -153,7 +153,7 @@ class Teleop:
         for i,s in enumerate(skels):
             v2 = np.array([s.head.transform.translation.x,
                            s.head.transform.translation.z])
-            ang = np.arccos(v2[1]/np.linalg.norm(v2))
+            ang = np.arccos(abs(v2[1])/np.linalg.norm(v2))
             dist = v2[1]
             cost = ANG_MULT*ang + DIST_MULT*dist
             data.append([i, s.userid, cost])
@@ -163,7 +163,7 @@ class Teleop:
         return
 
 
-#auxiliary functions:
+# auxiliary functions:
 def start_box(xcenter, ycenter, zcenter, boxlength):
     to_add = boxlength/2.
     xmin = xcenter - to_add
@@ -195,7 +195,7 @@ def joint_lims(limb):
     return ang_lims, max_vels
 
 
-#main function:
+# main function:
 if __name__ == '__main__':
     Teleop()
     rospy.spin()
