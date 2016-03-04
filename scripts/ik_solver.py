@@ -24,8 +24,6 @@ class IKsolver:
         self.iksvc = rospy.ServiceProxy(ns, SolvePositionIK)
         self.solution = dict()
         # self.solution_found = False
-        # self.last_solution_time = rospy.Time.now()
-        # self.ptarget = ptarget  #Point(x=?, y=?, z=?)
         self.qtarget = [
             # Human-like mapping (front of camera  = front of the wrist)
             Quaternion(
@@ -47,16 +45,6 @@ class IKsolver:
         ikreq = SolvePositionIKRequest() #service request object
         hdr = Header(
             stamp=rospy.Time.now(), frame_id='base')
-       
-        # pose = PoseStamped(
-        #     header=hdr,
-        #     pose=Pose(
-        #         position=Point(x=0.579227070387, y=0.179306062459, z=0.0979859157835),
-        #         orientation=Quaternion(x=0.141492454599, y=0.989716621765, z=0.00828309114087,
-        #             w=0.0192946701035)
-        #     ),
-        # )    
- 
         pose = PoseStamped(
             header=hdr,
             pose=Pose(
@@ -64,7 +52,6 @@ class IKsolver:
                 orientation=self.qtarget[0]
             ),
         )  
-
         ikreq.pose_stamp.append(pose)
 
         try:
@@ -77,8 +64,7 @@ class IKsolver:
             self.solution = dict(zip(resp.joints[0].name,
                 resp.joints[0].position))
             # self.solution_found = True
-            # self.last_solution_time = rospy.Time.now()
-            rospy.loginfo("EXACT solution Found, %s" % self.limb, self.solution)
+            rospy.loginfo("Exact solution Found, %s" % self.limb, self.solution)
             return True
       
         else:
@@ -96,7 +82,6 @@ class IKsolver:
             #         ),
             #     )
             #     ikreq.pose_stamp.append(pose_soft)
-
             for counter in xrange(50):
                 try:
                     resp = self.iksvc(ikreq)           
@@ -110,8 +95,7 @@ class IKsolver:
                             self.solution = dict(zip(resp.joints[i].name,
                                 resp.joints[i].position))
                             # self.solution_found = True
-                            # self.last_solution_time = rospy.Time.now()
-                            rospy.loginfo("EXACT solution Found, %s" % self.limb, self.solution)
+                            rospy.loginfo("Exact solution Found, %s" % self.limb, self.solution)
                             return True
                 else:
                     rospy.logwarn("INVALID POSE for %s" % self.limb)
