@@ -16,7 +16,7 @@ from sensor_msgs.msg import JointState
 import baxter_interface
 
 class IKsolver:
-    def __init__(self,limb):
+    def __init__(self, limb):
         self.limb = limb    #just a string
         self.interface = baxter_interface.Limb(limb)
         ns = "ExternalTools/" + limb + "/PositionKinematicsNode/IKService"
@@ -40,18 +40,28 @@ class IKsolver:
             ),
         ]
 
-    def solve(self,ptarget):    #ptarget should be a Point()
+    def solve(self, ptarget, target_rot): #ptarget should be a Point(); target_rot 'FRONT' or 'DOWN'
         # self.solution_found = False
         ikreq = SolvePositionIKRequest() #service request object
         hdr = Header(
             stamp=rospy.Time.now(), frame_id='base')
-        pose = PoseStamped(
-            header=hdr,
-            pose=Pose(
-                position=ptarget,
-                orientation=self.qtarget[0]
-            ),
-        )  
+        if target_rot == 'FRONT':
+            pose = PoseStamped(
+                header=hdr,
+                pose=Pose(
+                    position=ptarget,
+                    orientation=self.qtarget[0]
+                ),
+            )
+        elif target_rot == 'DOWN':
+            pose = PoseStamped(
+                header=hdr,
+                pose=Pose(
+                    position=ptarget,
+                    orientation=self.qtarget[1]
+                ),
+            )
+
         ikreq.pose_stamp.append(pose)
 
         try:

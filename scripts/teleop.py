@@ -6,6 +6,7 @@ import rospy
 import tf
 import baxter_interface
 from geometry_msgs.msg import Point
+from sensor_msgs.msg import Joy
 from skeletonmsgs_nu.msg import Skeletons
 from baxter_interface import CHECK_VERSION
 from limb_mover import LimbMover
@@ -14,7 +15,7 @@ from limb_mover import LimbMover
 # NON-ROS IMPORTS #
 ###################
 import numpy as np
-from multiprocessing import Process
+# from multiprocessing import Process
 
 ####################
 # GLOBAL VARIABLES #
@@ -37,6 +38,13 @@ class Teleop:
 
         self.mover_left = LimbMover("left")
         self.mover_right = LimbMover("right")
+        self.gripperL = baxter_interface.Gripper("left")
+        self.gripperR = baxter_interface.Gripper("right")
+        self.gripperL.calibrate()
+        # self.gripperR.calibrate()
+
+        self.target_rotL = 'FRONT'
+        self.target_rotR = 'FRONT'
         
         # define a subscriber to listen to /skeletons:
         self.start_flag = False
@@ -47,6 +55,9 @@ class Teleop:
 
         self.ang_limsL, self.max_velsL = joint_lims('left')
         self.ang_limsR, self.max_velsR = joint_lims('right')
+
+        # rospy.Subscriber("/joy", Joy, self.cb_joy, queue_size=1)
+        rospy.Subscriber("/joy", Joy, self.cb_joy)
 
         dt = rospy.Duration(1./CONTROL_FREQ)
         self.timer = rospy.Timer(dt, self.cb_control)
@@ -91,7 +102,7 @@ class Teleop:
                 user_ZL = transL[2]
 
                 if not self.start_flag:
-                    pmins, pmaxs = start_box(0.10, -0.05, 0.3, 0.80)
+                    pmins, pmaxs = start_box(0.10, -0.05, 0.3, 0.8)
                     if (pmins[0]<user_XL<pmaxs[0] and pmins[1]<user_YL<pmaxs[1] and pmins[2]<user_ZL<pmaxs[2] and 
                         pmins[0]<user_XR<pmaxs[0] and pmins[1]<user_YR<pmaxs[1] and pmins[2]<user_ZR<pmaxs[2]):
                         self.start_flag = True
@@ -105,13 +116,13 @@ class Teleop:
                     trans_pointL.y = user_XL*1.5
                     trans_pointL.z = -user_YL*2
                     
-                    p1 = Process(target = self.mover_left.solver.solve(trans_pointL))
-                    p1.start()
-                    p2 = Process(target = self.mover_right.solver.solve(trans_pointR))
-                    p2.start()
+                    # p1 = Process(target = self.mover_left.solver.solve(trans_pointL, self.target_rotL))
+                    # p1.start()
+                    # p2 = Process(target = self.mover_right.solver.solve(trans_pointR, self.target_rotR))
+                    # p2.start()
                     
-                    # self.mover_left.solver.solve(trans_pointL)
-                    # self.mover_right.solver.solve(trans_pointR)
+                    self.mover_left.solver.solve(trans_pointL, self.target_rotL)
+                    self.mover_right.solver.solve(trans_pointR, self.target_rotR)
 
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 pass
@@ -171,6 +182,28 @@ class Teleop:
         self.key_id = data[idx][1]
         return
 
+    def cb_joy(self, message):
+        if abs(message.axes[4]) > 0.8:
+            # abs(self.mover_left.interface.endpoint_pose()['orientation'].x) < 0.2 and \
+            # abs(self.mover_left.interface.endpoint_pose()['orientation'].z) < 0.2 and \
+            # 0.5 < self.mover_left.interface.endpoint_pose()['orientation'].y < 0.9 and \
+            # 0.5 < self.mover_left.interface.endpoint_pose()['orientation'].w < 0.9:
+            self.target_rotL = 'DOWN'
+        
+        if abs(message.axes[4]) < 0.2:
+            # abs(self.mover_left.interface.endpoint_pose()['orientation'].x) < 0.1 and \
+            # abs(self.mover_left.interface.endpoint_pose()['orientation'].z) < 0.1 and \
+            # abs(self.mover_left.interface.endpoint_pose()['orientation'].w) < 0.1 and \
+            # abs(self.mover_left.interface.endpoint_pose()['orientation'].y) > 0.9:
+            self.target_rotL = 'FRONT'
+
+        if message.buttons[1] == 1 and self.gripperL._state.position > 90:
+            self.gripperL.close()
+
+        if message.buttons[1] == 1 and self.gripperL.gripping() or \
+        message.buttons[1] == 1 and self.gripperL._state.position < 50:
+            self.gripperL.open()
+
 
 # auxiliary functions:
 def start_box(xcenter, ycenter, zcenter, boxlength):
@@ -202,6 +235,9 @@ def joint_lims(limb):
         (limb+'_w1',4),
         (limb+'_w2',4)])
     return ang_lims, max_vels
+
+# def quat_isclose(orientation):
+
 
 
 # main function:
