@@ -38,31 +38,33 @@ class Teleop:
 
         self.mover_left = LimbMover("left")
         self.mover_right = LimbMover("right")
-        self.gripperL = baxter_interface.Gripper("left")
-        self.gripperR = baxter_interface.Gripper("right")
-        self.gripperL.calibrate()
+        # self.gripperL = baxter_interface.Gripper("left")
+        # self.gripperR = baxter_interface.Gripper("right")
+        # self.gripperL.calibrate()
         # self.gripperR.calibrate()
+
+        self.ang_limsL, self.max_velsL = joint_lims('left')
+        self.ang_limsR, self.max_velsR = joint_lims('right')
 
         self.target_rotL = 'FRONT'
         self.target_rotR = 'FRONT'
         
         # define a subscriber to listen to /skeletons:
-        self.start_flag = False
+        self.start_flagL = False
+        self.start_flagR = False
         self.count = 0
         self.key_index = 0
         self.key_id = 1
-        rospy.Subscriber("/skeletons", Skeletons, self.cb_skel, queue_size=1)
-
-        self.ang_limsL, self.max_velsL = joint_lims('left')
-        self.ang_limsR, self.max_velsR = joint_lims('right')
-
+        rospy.Subscriber("/skeletons", Skeletons, self.cb_skelR, queue_size=1)
+        rospy.Subscriber("/skeletons", Skeletons, self.cb_skelL, queue_size=1)
+        
         # rospy.Subscriber("/joy", Joy, self.cb_joy, queue_size=1)
-        rospy.Subscriber("/joy", Joy, self.cb_joy)
+        # rospy.Subscriber("/joy", Joy, self.cb_joy)
 
         dt = rospy.Duration(1./CONTROL_FREQ)
         self.timer = rospy.Timer(dt, self.cb_control)
         
-    def cb_skel(self, message):
+    def cb_skelL(self, message):
         if len(message.skeletons) == 0:
             return
         if self.count%FREQ_DIV == 0:
@@ -84,48 +86,81 @@ class Teleop:
 
         # target points for Baxter:
         trans_pointL = Point()
-        trans_pointR = Point()
 
         if (self.tflistener.frameExists('/torso_'+str(user)) and 
-            self.tflistener.frameExists('/right_hand_'+str(user)) and 
             self.tflistener.frameExists('/left_hand_'+str(user))):
             try:
-                (transR, rotR) = self.tflistener.lookupTransform('/torso_' + str(user),
-                    '/right_hand_' + str(user), rospy.Time(0))
                 (transL, rotL) = self.tflistener.lookupTransform('/torso_' + str(user),
                     '/left_hand_' + str(user), rospy.Time(0))
-                user_XR = transR[0]
-                user_YR = transR[1]
-                user_ZR = transR[2]
+
                 user_XL = transL[0]
                 user_YL = transL[1]
                 user_ZL = transL[2]
 
-                if not self.start_flag:
+                if not self.start_flagL:
                     pmins, pmaxs = start_box(0.10, -0.05, 0.3, 0.8)
-                    if (pmins[0]<user_XL<pmaxs[0] and pmins[1]<user_YL<pmaxs[1] and pmins[2]<user_ZL<pmaxs[2] and 
-                        pmins[0]<user_XR<pmaxs[0] and pmins[1]<user_YR<pmaxs[1] and pmins[2]<user_ZR<pmaxs[2]):
-                        self.start_flag = True
+                    if (pmins[0]<user_XL<pmaxs[0] and pmins[1]<user_YL<pmaxs[1] and pmins[2]<user_ZL<pmaxs[2]):
+                        self.start_flagL = True
 
-                else:
-                    trans_pointR.x = user_ZR*3
-                    trans_pointR.y = user_XR*1.5
-                    trans_pointR.z = -user_YR*2
-
+                if (self.start_flagL and self.start_flagR):
                     trans_pointL.x = user_ZL*3
                     trans_pointL.y = user_XL*1.5
                     trans_pointL.z = -user_YL*2
                     
-                    # p1 = Process(target = self.mover_left.solver.solve(trans_pointL, self.target_rotL))
-                    # p1.start()
-                    # p2 = Process(target = self.mover_right.solver.solve(trans_pointR, self.target_rotR))
-                    # p2.start()
-                    
                     self.mover_left.solver.solve(trans_pointL, self.target_rotL)
+
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                pass        
+        
+        return
+
+    def cb_skelR(self, message):
+        if len(message.skeletons) == 0:
+            return
+        if self.count%FREQ_DIV == 0:
+            self.get_key_user(message.skeletons)
+        self.count += 1
+        if self.key_index < len(message.skeletons) and \
+                message.skeletons[self.key_index].userid == self.key_id:
+            skel = message.skeletons[self.key_index]
+        else:
+            for i,skel in enumerate(message.skeletons):
+                if skel.userid == self.key_id:
+                    found = True
+                    break
+                found = False
+            if not found:
+                rospy.logwarn("Could not find a skeleton userid that matches the key user")
+                return        
+        user = skel.userid
+
+        # target points for Baxter:
+        trans_pointR = Point()
+
+        if (self.tflistener.frameExists('/torso_'+str(user)) and 
+            self.tflistener.frameExists('/right_hand_'+str(user))):
+            try:
+                (transR, rotR) = self.tflistener.lookupTransform('/torso_' + str(user),
+                    '/right_hand_' + str(user), rospy.Time(0))
+
+                user_XR = transR[0]
+                user_YR = transR[1]
+                user_ZR = transR[2]
+
+                if not self.start_flagR:
+                    pmins, pmaxs = start_box(0.10, -0.05, 0.3, 0.8)
+                    if (pmins[0]<user_XR<pmaxs[0] and pmins[1]<user_YR<pmaxs[1] and pmins[2]<user_ZR<pmaxs[2]):
+                        self.start_flagR = True
+
+                if (self.start_flagL and self.start_flagR):
+                    trans_pointR.x = user_ZR*3
+                    trans_pointR.y = user_XR*1.5
+                    trans_pointR.z = -user_YR*2
+                    
                     self.mover_right.solver.solve(trans_pointR, self.target_rotR)
 
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-                pass
+                pass        
         
         return
 
@@ -133,7 +168,7 @@ class Teleop:
         control_cmdL = dict()
         control_cmdR = dict()
 
-        if self.start_flag:
+        if (self.start_flagL and self.start_flagR):
             cur_angsL = self.mover_left.interface.joint_angles()
             cur_angsR = self.mover_right.interface.joint_angles()
             des_angsL = self.mover_left.solver.solution
@@ -182,27 +217,20 @@ class Teleop:
         self.key_id = data[idx][1]
         return
 
-    def cb_joy(self, message):
-        if abs(message.axes[4]) > 0.8:
-            # abs(self.mover_left.interface.endpoint_pose()['orientation'].x) < 0.2 and \
-            # abs(self.mover_left.interface.endpoint_pose()['orientation'].z) < 0.2 and \
-            # 0.5 < self.mover_left.interface.endpoint_pose()['orientation'].y < 0.9 and \
-            # 0.5 < self.mover_left.interface.endpoint_pose()['orientation'].w < 0.9:
-            self.target_rotL = 'DOWN'
+    # def cb_joy(self, message):
+    #     if abs(message.axes[4]) > 0.8:
+    #         self.target_rotL = 'DOWN'
         
-        if abs(message.axes[4]) < 0.2:
-            # abs(self.mover_left.interface.endpoint_pose()['orientation'].x) < 0.1 and \
-            # abs(self.mover_left.interface.endpoint_pose()['orientation'].z) < 0.1 and \
-            # abs(self.mover_left.interface.endpoint_pose()['orientation'].w) < 0.1 and \
-            # abs(self.mover_left.interface.endpoint_pose()['orientation'].y) > 0.9:
-            self.target_rotL = 'FRONT'
+    #     if abs(message.axes[4]) < 0.2:
+    #         self.target_rotL = 'FRONT'
 
-        if message.buttons[1] == 1 and self.gripperL._state.position > 90:
-            self.gripperL.close()
+    #     if message.buttons[1] == 1 and self.gripperL._state.position > 90:
+    #         self.gripperL.close()
 
-        if message.buttons[1] == 1 and self.gripperL.gripping() or \
-        message.buttons[1] == 1 and self.gripperL._state.position < 50:
-            self.gripperL.open()
+    #     if (message.buttons[1] == 1 and self.gripperL.gripping()) or \
+    #     (message.buttons[1] == 1 and self.gripperL._state.position < 50:
+    #         self.gripperL.open()
+          # return
 
 
 # auxiliary functions:
@@ -235,9 +263,6 @@ def joint_lims(limb):
         (limb+'_w1',4),
         (limb+'_w2',4)])
     return ang_lims, max_vels
-
-# def quat_isclose(orientation):
-
 
 
 # main function:
