@@ -1,0 +1,21 @@
+<launch>
+  <!-- args -->
+  <arg name="vis" default="true" />
+  <arg name="driver" default="true" />
+
+  <!-- Launch depth sensor with openni_camera... -->
+  <group if="$(arg driver)" >
+	<include file="$(find openni_launch)/launch/openni.launch"/>
+  </group>
+
+  <!-- This node has to be launched after the openni_kinect nodes, so a sleep(10) was added to the code... -->
+  <node pkg="skeletontracker_nu" type="skeletontracker" name="skeletontracker"  output="screen" respawn="true" />
+
+  <!-- Start rviz with default config file... -->
+  <group if="$(arg vis)" >
+	<node pkg="rviz" type="rviz" name="rviz" args="-d $(find baxter_skeletonteleop)/launch/tracker_config.rviz"/>
+  </group>
+
+  <!-- Start the teleop node -->
+  <node name="teleop" pkg="baxter_skeletonteleop" type="teleop.py" output="screen" respawn="true" />
+</launch>
