@@ -8,13 +8,21 @@ The following packages are pre-requisites, in addition to the [Baxter SDK](https
 
 +   [skeletontracker_nu](https://github.com/NxRLab/skeletontracker_nu)
 +   [skeletonmsgs_nu](https://github.com/NxRLab/skeletonmsgs_nu)
++   Optionally, if you want control over gripper and haptic (vibration) feedback, [wiimote](http://wiki.ros.org/wiimote)
 
 The following answers are great resources for setting up skeleton tracking:
 
 +   [how-can-i-setup-skeleton-tracking-using-a-kinect-and-ros-indigo-on-ubuntu](http://answers.ros.org/question/214421/how-can-i-setup-skeleton-tracking-using-a-kinect-and-ros-indigo-on-ubuntu-1404/#220498)
 +   [asus-xtion-problems-with-ubuntu-1204-running-ros-fuerte](http://answers.ros.org/question/109411/asus-xtion-problems-with-ubuntu-1204-running-ros-fuerte/#109831)
 
-After enabling Baxter, simply roslaunch `baxter_skeletonteleop.launch` to start the program. You should soon see an RViz window with the depth video overlaid on the skeleton tracker. Stand in front of your OpenNI-compliant depth-sensor (such as Kinect or Asus Xtion), and bring your hands to the start position (both hands near the torso) to begin tele-operating the robot. If there are multiple people coming in and out of the depth sensor's field of view, Baxter will track whichever user is most central.
+To pair your Wiimote with your computer, follow this [tutorial](http://wiki.ros.org/wiimote/Tutorials/StartingWiimoteNode).
+
+After enabling Baxter (and optionally pairing your Wiimote), simply roslaunch `baxter_skeletonteleop.launch` to start the program:
+`roslaunch baxter_skeletonteleop baxter_skeletonteleop.launch`
+
+You should soon see an RViz window with the depth video overlaid on the skeleton tracker. Stand in front of your OpenNI-compliant depth-sensor (such as Kinect or Asus Xtion), and bring your hands to the start position (both hands near the torso) to begin tele-operating the robot. If there are multiple people coming in and out of the depth sensor's field of view, Baxter will track whichever user is most central.
+
+If you're holding your paired Wiimote, press the B button to close Baxter's gripper (currently only one arm supported for gripping) and the A button to open it. If Baxter grabs an object, the Wiimote would momentarily rumble for user feedback.
 
 The basic flow of processes is as follows:
 **skeleton tracking --> scaled mapping of human's hand position to robot's end-effector position --> Iterative numerical inverse kinematics --> proportional joint-space velocity control**
