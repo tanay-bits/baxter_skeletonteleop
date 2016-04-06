@@ -6,8 +6,9 @@ import rospy
 import tf
 import baxter_interface
 from geometry_msgs.msg import Point
-from sensor_msgs.msg import Joy
+from sensor_msgs.msg import Joy, JoyFeedback, JoyFeedbackArray
 from skeletonmsgs_nu.msg import Skeletons
+from baxter_core_msgs.msg import EndEffectorState
 from baxter_interface import CHECK_VERSION
 from limb_mover import LimbMover
 
@@ -23,10 +24,11 @@ import numpy as np
 FREQ_DIV = 30   #frequency divider for checking "key" skeleton
 ANG_MULT = 20
 DIST_MULT = 1
-CONTROL_FREQ = 100   #Hz
+CONTROL_FREQ = 100  #Hz
 KP = 1
 CAPMAXSPEED = 0.3   #fraction of max speed limit allowed
 DEADBAND = 0.3      #radians
+RUMBLE_DURATION = 1
 
 class Teleop:
     def __init__(self):
@@ -36,11 +38,16 @@ class Teleop:
         if not self.rs.state().enabled:
             rospy.logerr("Baxter not enabled")
 
+        # Define publisher for rumble:
+        self.pub = rospy.Publisher('/joy/set_feedback', JoyFeedbackArray, queue_size=1)
+        rospy.sleep(2)
+        self.rumFlag = True
+
         self.mover_left = LimbMover("left")
         self.mover_right = LimbMover("right")
-        # self.gripperL = baxter_interface.Gripper("left")
+        self.gripperL = baxter_interface.Gripper("left")
         # self.gripperR = baxter_interface.Gripper("right")
-        # self.gripperL.calibrate()
+        self.gripperL.calibrate()
         # self.gripperR.calibrate()
 
         self.ang_limsL, self.max_velsL = joint_lims('left')
@@ -49,21 +56,28 @@ class Teleop:
         self.target_rotL = 'FRONT'
         self.target_rotR = 'FRONT'
         
-        # define a subscriber to listen to /skeletons:
         self.start_flagL = False
         self.start_flagR = False
         self.count = 0
         self.key_index = 0
         self.key_id = 1
-        rospy.Subscriber("/skeletons", Skeletons, self.cb_skelR, queue_size=1)
+
+        # Define two subscribers (one for each arm) to listen to /skeletons:
         rospy.Subscriber("/skeletons", Skeletons, self.cb_skelL, queue_size=1)
+        rospy.Subscriber("/skeletons", Skeletons, self.cb_skelR, queue_size=1)
         
-        # rospy.Subscriber("/joy", Joy, self.cb_joy, queue_size=1)
+        # Define a subscriber to listen to /joy for gripper control:
+        rospy.Subscriber("/joy", Joy, self.cb_joy, queue_size=1)
         # rospy.Subscriber("/joy", Joy, self.cb_joy)
 
+        # Define a timer to run velocity control:
         dt = rospy.Duration(1./CONTROL_FREQ)
         self.timer = rospy.Timer(dt, self.cb_control)
         
+        # Define a timer to check if Wiimote needs to rumble:
+        check_for_rum_every = rospy.Duration(0.1)
+        self.rum_timer = rospy.Timer(check_for_rum_every, self.cb_rum)
+
     def cb_skelL(self, message):
         if len(message.skeletons) == 0:
             return
@@ -217,20 +231,37 @@ class Teleop:
         self.key_id = data[idx][1]
         return
 
-    # def cb_joy(self, message):
-    #     if abs(message.axes[4]) > 0.8:
-    #         self.target_rotL = 'DOWN'
+    def cb_joy(self, message):
+        if abs(message.axes[2]) < 5:
+            self.target_rotL = 'DOWN'
         
-    #     if abs(message.axes[4]) < 0.2:
-    #         self.target_rotL = 'FRONT'
+        if abs(message.axes[2]) > 8:
+            self.target_rotL = 'FRONT'
 
-    #     if message.buttons[1] == 1 and self.gripperL._state.position > 90:
-    #         self.gripperL.close()
+        if message.buttons[3] == 1:
+            self.gripperL.close()
 
-    #     if (message.buttons[1] == 1 and self.gripperL.gripping()) or \
-    #     (message.buttons[1] == 1 and self.gripperL._state.position < 50:
-    #         self.gripperL.open()
-          # return
+        if message.buttons[2] == 1:
+            self.gripperL.open()        
+        return
+
+    def cb_rum(self, event):      
+        if self.gripperL._state.force > 28 and self.rumFlag == True:
+            rum = JoyFeedback()
+            rum.type = JoyFeedback.TYPE_RUMBLE
+            rum.id = 0
+            rum.intensity = 0.51
+            msg = JoyFeedbackArray()
+            msg.array = [rum]            
+            self.pub.publish(msg)
+            rospy.sleep(0.3)
+            rum.intensity = 0.0
+            msg.array = [rum]
+            self.pub.publish(msg)
+            self.rumFlag = False
+
+        if self.gripperL._state.force == 0:
+            self.rumFlag = True
 
 
 # auxiliary functions:
