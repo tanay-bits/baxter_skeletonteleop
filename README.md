@@ -22,7 +22,7 @@ After enabling Baxter (and optionally pairing your Wiimote), simply roslaunch `b
 
 You should soon see an RViz window with the depth video overlaid on the skeleton tracker. Stand in front of your OpenNI-compliant depth-sensor (such as Kinect or Asus Xtion), and bring your hands to the start position (both hands near the torso) to begin tele-operating the robot. If there are multiple people coming in and out of the depth sensor's field of view, Baxter will track whichever user is most central.
 
-If you're holding your paired Wiimote, press the B button to close Baxter's gripper (currently only one arm supported for gripping) and the A button to open it. If Baxter grabs an object, the Wiimote would momentarily rumble for user feedback.
+If you're holding your paired Wiimote, press the B button to close Baxter's gripper (currently only one arm supported for gripping) and the A button to open it. If Baxter grabs an object, the Wiimote would momentarily rumble for user feedback. To keep the end-effector's default orientation (facing you), use the Wiimote horizontally; to switch to facing down orientation (maybe for picking something off a table), use it vertically. 
 
 The basic flow of processes is as follows:
 **skeleton tracking --> scaled mapping of human's hand position to robot's end-effector position --> Iterative numerical inverse kinematics --> proportional joint-space velocity control**
