@@ -2,6 +2,7 @@
   <!-- args -->
   <arg name="vis" default="true" />
   <arg name="driver" default="true" />
+  <arg name="wiimote" default="false" />
 
   <!-- Launch depth sensor with openni_camera... -->
   <group if="$(arg driver)" >
@@ -17,5 +18,12 @@
   </group>
 
   <!-- Start the teleop node... -->
+  <group unless="$(arg wiimote)" >
   <node name="teleop" pkg="baxter_skeletonteleop" type="teleop.py" output="screen" respawn="true" />
+  </group>
+
+  <group if="$(arg wiimote)" >
+  <node name="teleop_gripper" pkg="baxter_skeletonteleop" type="teleop_gripper.py" output="screen" respawn="true" />
+  </group>
+
 </launch>
