@@ -17,8 +17,11 @@ The following answers are great resources for setting up skeleton tracking:
 
 To pair your Wiimote with your computer, follow this [tutorial](http://wiki.ros.org/wiimote/Tutorials/StartingWiimoteNode).
 
-After enabling Baxter (and optionally pairing your Wiimote), simply roslaunch `baxter_skeletonteleop.launch` to start the program:
+After enabling Baxter, simply roslaunch `baxter_skeletonteleop.launch` to start the program:
 `roslaunch baxter_skeletonteleop baxter_skeletonteleop.launch`
+
+Optionally, if you have your Wiimote paired, use the followinng launch command:
+`roslaunch baxter_skeletonteleop baxter_skeletonteleop.launch wiimote:='true'`
 
 You should soon see an RViz window with the depth video overlaid on the skeleton tracker. Stand in front of your OpenNI-compliant depth-sensor (such as Kinect or Asus Xtion), and bring your hands to the start position (both hands near the torso) to begin tele-operating the robot. If there are multiple people coming in and out of the depth sensor's field of view, Baxter will track whichever user is most central.
 
