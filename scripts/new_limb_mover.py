@@ -1,10 +1,16 @@
 #!/usr/bin/env python
+###########
+# IMPORTS #
+###########
 import rospy
 import baxter_interface
 from baxter_pykdl import baxter_kinematics
 import numpy as np
 from scipy import optimize
 
+####################
+# GLOBAL VARIABLES #
+####################
 WEIGHT_GRIPPER_POSITION = 2 
 WEIGHT_JTS_TRAVEL = 0.001
 

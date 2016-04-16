@@ -28,27 +28,31 @@ CONTROL_FREQ = 100  #Hz
 KP = 1
 CAPMAXSPEED = 0.3   #fraction of max speed limit allowed
 DEADBAND = 0.3      #radians
-# RUMBLE_DURATION = 1
+RUMBLE_DURATION = 1
 
 class Teleop:
     def __init__(self):
         rospy.init_node('teleop')
+        wiiFlag = rospy.get_param('~using_wii')
         self.tflistener = tf.TransformListener()
         self.rs = baxter_interface.RobotEnable(CHECK_VERSION)
         if not self.rs.state().enabled:
             rospy.logerr("Baxter not enabled")
 
+        if wiiFlag:
         # Define publisher for rumble:
-        # self.pub = rospy.Publisher('/joy/set_feedback', JoyFeedbackArray, queue_size=1)
-        # rospy.sleep(2)
-        # self.rumFlag = True
+            self.pub = rospy.Publisher('/joy/set_feedback', JoyFeedbackArray, queue_size=1)
+            rospy.sleep(2)
+            self.rumFlag = True
 
         self.mover_left = LimbMover("left")
         self.mover_right = LimbMover("right")
-        # self.gripperL = baxter_interface.Gripper("left")
-        # self.gripperR = baxter_interface.Gripper("right")
-        # self.gripperL.calibrate()
-        # self.gripperR.calibrate()
+
+        if wiiFlag:
+            self.gripperL = baxter_interface.Gripper("left")
+            # self.gripperR = baxter_interface.Gripper("right")
+            self.gripperL.calibrate()
+            # self.gripperR.calibrate()
 
         self.ang_limsL, self.max_velsL = joint_lims('left')
         self.ang_limsR, self.max_velsR = joint_lims('right')
@@ -66,17 +70,20 @@ class Teleop:
         rospy.Subscriber("/skeletons", Skeletons, self.cb_skelL, queue_size=1)
         rospy.Subscriber("/skeletons", Skeletons, self.cb_skelR, queue_size=1)
         
+        if wiiFlag:
         # Define a subscriber to listen to /joy for gripper control:
-        # rospy.Subscriber("/joy", Joy, self.cb_joy, queue_size=1)
-        # rospy.Subscriber("/joy", Joy, self.cb_joy)
+            rospy.Subscriber("/joy", Joy, self.cb_joy, queue_size=1)
 
         # Define a timer to run velocity control:
         dt = rospy.Duration(1./CONTROL_FREQ)
         self.timer = rospy.Timer(dt, self.cb_control)
         
+        if wiiFlag:
         # Define a timer to check if Wiimote needs to rumble:
-        # check_for_rum_every = rospy.Duration(0.1)
-        # self.rum_timer = rospy.Timer(check_for_rum_every, self.cb_rum)
+            check_for_rum_every = rospy.Duration(0.1)
+            self.rum_timer = rospy.Timer(check_for_rum_every, self.cb_rum)
+
+        rospy.on_shutdown(self._cleanup)
 
     def cb_skelL(self, message):
         if len(message.skeletons) == 0:
@@ -231,38 +238,42 @@ class Teleop:
         self.key_id = data[idx][1]
         return
 
-    # def cb_joy(self, message):
-    #     if abs(message.axes[2]) < 5:
-    #         self.target_rotL = 'DOWN'
+    def cb_joy(self, message):
+        if abs(message.axes[2]) < 5:
+            self.target_rotL = 'DOWN'
         
-    #     if abs(message.axes[2]) > 8:
-    #         self.target_rotL = 'FRONT'
+        if abs(message.axes[2]) > 8:
+            self.target_rotL = 'FRONT'
 
-    #     if message.buttons[3] == 1:
-    #         self.gripperL.close()
+        if message.buttons[3] == 1:
+            self.gripperL.close()
 
-    #     if message.buttons[2] == 1:
-    #         self.gripperL.open()        
-    #     return
+        if message.buttons[2] == 1:
+            self.gripperL.open()        
+        return
 
-    # def cb_rum(self, event):      
-    #     if self.gripperL._state.force > 28 and self.rumFlag == True:
-    #         rum = JoyFeedback()
-    #         rum.type = JoyFeedback.TYPE_RUMBLE
-    #         rum.id = 0
-    #         rum.intensity = 0.51
-    #         msg = JoyFeedbackArray()
-    #         msg.array = [rum]            
-    #         self.pub.publish(msg)
-    #         rospy.sleep(0.3)
-    #         rum.intensity = 0.0
-    #         msg.array = [rum]
-    #         self.pub.publish(msg)
-    #         self.rumFlag = False
+    def cb_rum(self, event):      
+        if self.gripperL._state.force > 28 and self.rumFlag == True:
+            rum = JoyFeedback()
+            rum.type = JoyFeedback.TYPE_RUMBLE
+            rum.id = 0
+            rum.intensity = 0.51
+            msg = JoyFeedbackArray()
+            msg.array = [rum]            
+            self.pub.publish(msg)
+            rospy.sleep(0.3)
+            rum.intensity = 0.0
+            msg.array = [rum]
+            self.pub.publish(msg)
+            self.rumFlag = False
 
-    #     if self.gripperL._state.force == 0:
-    #         self.rumFlag = True
+        if self.gripperL._state.force == 0:
+            self.rumFlag = True
 
+    def _cleanup(self):
+        rospy.loginfo("Shutting down...")
+        self.mover_left.interface.exit_control_mode()
+        self.mover_right.interface.exit_control_mode()
 
 # auxiliary functions:
 def start_box(xcenter, ycenter, zcenter, boxlength):
