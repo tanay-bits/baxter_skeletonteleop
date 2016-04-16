@@ -23,8 +23,8 @@ FREQ_DIV = 30   #frequency divider for checking "key" skeleton
 ANG_MULT = 20
 DIST_MULT = 1
 CONTROL_FREQ = 100  #Hz
-KP = 1
-CAPMAXSPEED = 0.3   #fraction of max speed limit allowed
+KP = 10
+CAPMAXSPEED = 0.4   #fraction of max speed limit allowed
 DEADBAND = 0.3      #radians
 # RUMBLE_DURATION = 1
 
@@ -264,8 +264,6 @@ class Teleop:
         rospy.loginfo("Shutting down...")
         self.mover_left.interface.exit_control_mode()
         self.mover_right.interface.exit_control_mode()
-        self.mover_left.interface.move_to_neutral()
-        self.mover_right.interface.move_to_neutral()
 
 
 # auxiliary functions:
