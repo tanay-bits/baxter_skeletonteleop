@@ -229,12 +229,6 @@ class NewTeleop:
         return
 
     def cb_joy(self, message):
-        if abs(message.axes[2]) < 5:
-            self.target_rotL = 'DOWN'
-        
-        if abs(message.axes[2]) > 8:
-            self.target_rotL = 'FRONT'
-
         if message.buttons[3] == 1:
             self.gripperL.close()
 
