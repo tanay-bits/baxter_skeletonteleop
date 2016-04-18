@@ -110,7 +110,7 @@ class NewTeleop:
                 user_ZL = transL[2]
 
                 if not self.start_flagL:
-                    pmins, pmaxs = start_box(0.10, -0.05, 0.3, 1.0)
+                    pmins, pmaxs = start_box(0.10, -0.05, 0.3, 0.8)
                     if (pmins[0]<user_XL<pmaxs[0] and pmins[1]<user_YL<pmaxs[1] and pmins[2]<user_ZL<pmaxs[2]):
                         self.start_flagL = True
 
@@ -159,7 +159,7 @@ class NewTeleop:
                 user_ZR = transR[2]
 
                 if not self.start_flagR:
-                    pmins, pmaxs = start_box(0.10, -0.05, 0.3, 1.0)
+                    pmins, pmaxs = start_box(0.10, -0.05, 0.3, 0.8)
                     if (pmins[0]<user_XR<pmaxs[0] and pmins[1]<user_YR<pmaxs[1] and pmins[2]<user_ZR<pmaxs[2]):
                         self.start_flagR = True
 
