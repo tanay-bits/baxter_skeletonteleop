@@ -41,24 +41,29 @@ class NewLimbMover:
         self.target_pos = ptarget
         self.curr_jts = self.get_curr_joints()
         
-        self.target_jts = self.find_best_jts()
+        self.target_jts, success = self.find_best_jts()
         self.target_jts_dict = dict(zip(self.jt_names, self.target_jts))
-        return True
+
+        # rospy.loginfo("message: %s", message)
+        if success:
+            return True
+        else:
+            return False
 
     def find_best_jts(self):
         '''Solves for optimal joint values (first 6 joints), returns ndarray of all joint angles
         (first 6 optimal, last=0).'''
 
         # rospy.loginfo("ptarget: %s", self.target_pos)
-
         jt_bounds = [(-1.7 ,1.7),(-2.14, 1.04),(-3.05, 3.05),(-0.05, 2.61),(-3.05, 3.05),(-1.57, 2.09)]
         # jt_bounds = np.array([(-1.7 ,1.7),(-2.14, 1.04),(-3.05, 3.05),(-0.05, 2.61),(-3.05, 3.05),(-1.57, 2.09)])
         solver_options = {"maxiter":5000,"disp":False}
         result = optimize.minimize(self.calc_error, self.curr_jts[:-1], jac=self.calc_jac, bounds=jt_bounds, options=solver_options)
         jts = result.x
         jts = np.hstack((jts, 0))
-        # success = results.success
-        return jts
+        success = result.success
+        # message = result.message
+        return jts, success
 
     def calc_error(self, jt_values):
         '''Given ndarray of first 6 joint angles, returns a weighted error objective function.'''

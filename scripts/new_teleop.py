@@ -20,7 +20,7 @@ ANG_MULT = 20
 DIST_MULT = 1
 CONTROL_FREQ = 100  #Hz
 KP = 10
-CAPMAXSPEED = 0.4   #fraction of max speed limit allowed
+CAPMAXSPEED = 0.3   #fraction of max speed limit allowed
 DEADBAND = 0.3      #radians
 RUMBLE_DURATION = 1
 
@@ -110,7 +110,7 @@ class NewTeleop:
                 user_ZL = transL[2]
 
                 if not self.start_flagL:
-                    pmins, pmaxs = start_box(0.10, -0.05, 0.3, 0.8)
+                    pmins, pmaxs = start_box(0.10, -0.05, 0.3, 0.6)
                     if (pmins[0]<user_XL<pmaxs[0] and pmins[1]<user_YL<pmaxs[1] and pmins[2]<user_ZL<pmaxs[2]):
                         self.start_flagL = True
 
@@ -159,7 +159,7 @@ class NewTeleop:
                 user_ZR = transR[2]
 
                 if not self.start_flagR:
-                    pmins, pmaxs = start_box(0.10, -0.05, 0.3, 0.8)
+                    pmins, pmaxs = start_box(0.10, -0.05, 0.3, 0.6)
                     if (pmins[0]<user_XR<pmaxs[0] and pmins[1]<user_YR<pmaxs[1] and pmins[2]<user_ZR<pmaxs[2]):
                         self.start_flagR = True
 
@@ -237,7 +237,7 @@ class NewTeleop:
         return
 
     def cb_rum(self, event):      
-        if self.gripperL._state.force > 28 and self.rumFlag == True:
+        if self.gripperL._state.force > 20 and self.rumFlag == True:
             rum = JoyFeedback()
             rum.type = JoyFeedback.TYPE_RUMBLE
             rum.id = 0
